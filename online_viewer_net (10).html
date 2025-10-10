@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fortune Cookie Game</title>
+    <style>
+        /* --- Basic Setup & Theming --- */
+        :root {
+            --bg-color: #fdf2e9;
+            --cookie-color: #e4a74a;
+            --cookie-dark: #c98e36;
+            --paper-color: #fffbeb;
+            --text-color: #5c3a12;
+            --shadow-color: rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevents scrollbars on mobile */
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Poppins', 'Helvetica Neue', sans-serif;
+            background: radial-gradient(circle, #fff7ed, var(--bg-color));
+            perspective: 1000px;
+            -webkit-tap-highlight-color: transparent; /* Disable tap highlight on mobile */
+        }
+
+        /* --- Main Game Container --- */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        
+        /* --- Prompt Text --- */
+        #prompt {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-color);
+            opacity: 1;
+            transition: opacity 0.5s ease;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        #prompt.hidden {
+            opacity: 0;
+        }
+
+        /* --- Fortune Cookie Styling & Animation --- */
+        .fortune-cookie-wrapper {
+            position: relative;
+            width: 250px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            animation: float 4s ease-in-out infinite;
+            transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            /* Adding a more realistic drop shadow */
+            filter: drop-shadow(0 5px 8px rgba(0,0,0,0.2));
+        }
+
+        .fortune-cookie-wrapper:hover {
+            transform: scale(1.05);
+        }
+        
+        .cookie-half {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            transition: transform 1s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.8s ease-out 0.2s;
+        }
+
+        #cookie-left {
+            transform-origin: bottom right;
+        }
+
+        #cookie-right {
+            transform-origin: bottom left;
+        }
+        
+        /* Cracked State Animation */
+        .fortune-cookie-wrapper.cracked #cookie-left {
+            transform: translate(-80px, 20px) rotate(-30deg) scale(0.9);
+            opacity: 0;
+        }
+
+        .fortune-cookie-wrapper.cracked #cookie-right {
+            transform: translate(80px, 20px) rotate(30deg) scale(0.9);
+            opacity: 0;
+        }
+
+        /* --- Fortune Paper Styling & Animation --- */
+        #fortune-paper {
+            position: absolute;
+            width: 280px;
+            background-color: var(--paper-color);
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 10px 25px var(--shadow-color);
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px) scale(0.5);
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        #fortune-paper.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1) rotate(-2deg);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        #fortune-text {
+            font-family: 'Caveat', cursive;
+            font-size: 1.8rem;
+            line-height: 1.4;
+            color: var(--text-color);
+        }
+
+        /* --- Reset Button --- */
+        #reset-button {
+            margin-top: 2rem;
+            padding: 12px 28px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--cookie-dark);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease 1s;
+            pointer-events: none;
+        }
+        
+        #reset-button.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        #reset-button:hover {
+            background-color: var(--cookie-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--shadow-color);
+        }
+
+        /* --- Keyframe Animations --- */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* --- Footer --- */
+        footer {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #bda17e;
+        }
+
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Caveat:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="game-container">
+        
+        <p id="prompt">Tap the cookie to reveal your fortune!</p>
+
+        <div class="fortune-cookie-wrapper" id="fortune-cookie">
+            <div id="fortune-paper">
+                <p id="fortune-text"></p>
+            </div>
+            
+            <svg id="cookie-left" class="cookie-half" viewBox="0 0 100 100">
+                <defs>
+                    <linearGradient id="grad-light" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#f3c27a;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#e4a74a;stop-opacity:1" />
+                    </linearGradient>
+                    <linearGradient id="grad-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#d89b3f;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#c98e36;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path d="M 50,95 A 45,45 0 0,1 5,50 L 50,50 Z" fill="url(#grad-light)"/>
+                <path d="M 50,95 A 45,45 0 0,0 95,50 L 50,50 Z" fill="url(#grad-dark)"/>
+            </svg>
+            <svg id="cookie-right" class="cookie-half" viewBox="0 0 100 100">
+                <defs>
+                    <linearGradient id="grad-light-right" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#f3c27a;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#e4a74a;stop-opacity:1" />
+                    </linearGradient>
+                    <linearGradient id="grad-dark-right" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#d89b3f;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#c98e36;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path d="M 50,95 A 45,45 0 0,1 5,50 L 50,50 Z" fill="url(#grad-light-right)" transform="rotate(90 50 50)"/>
+                <path d="M 50,95 A 45,45 0 0,0 95,50 L 50,50 Z" fill="url(#grad-dark-right)" transform="rotate(90 50 50)"/>
+            </svg>
+        </div>
+        
+        <button id="reset-button">New Fortune</button>
+    </div>
+
+    <footer>
+        &copy; 2025 raunak mane
+    </footer>
+
+    <script>
+        const fortunes = [
+            "Your creativity will lead to great success.",
+            "An exciting opportunity lies ahead of you.",
+            "You will soon be surrounded by good friends and laughter.",
+            "The journey of a thousand miles begins with a single step.",
+            "Patience is your key to unlocking a new door.",
+            "A surprise gift will arrive when you least expect it.",
+            "Your ability to find joy in small things will brighten your week.",
+            "Listen to your heart; it knows the way.",
+            "Hard work will pay off in the most unexpected way.",
+            "You are stronger than you think.",
+            "Adventure awaits. Say 'yes' to new experiences.",
+            "A kind gesture will be returned to you tenfold.",
+            "Good news is on its way to you.",
+            "Now is the time to try something new.",
+            "You will find happiness where you least expect it.",
+            "Your intuition is telling you something important. Listen.",
+            "Don't be afraid to take the road less traveled.",
+            "A dream you have will come true.",
+            "Manifest it, then act like it’s already yours.",
+            "Main character energy, always.",
+            "You’re literally the plot twist.",
+            "Lowkey, the universe is obsessed with you.",
+            "You didn’t come this far just to be mid.",
+            "Vibes attract tribes — keep yours high.",
+            "The glow-up is internal first.",
+            "Tomorrow’s drama doesn’t deserve today’s peace.",
+            "You’re the algorithm’s favorite.",
+            "If it’s meant for you, it won’t ghost you.",
+            "Your soft era still counts as growth.",
+            "Chill. You’re built for this.",
+            "Even Wi-Fi reconnects — so can you.",
+            "You’re not behind, you’re in your own timeline.",
+            "Dream audaciously. Fail aesthetically.",
+            "The assignment? You understood it.",
+            "You’re one lucky break away from your next flex.",
+            "Protect your peace like it’s a limited edition drop.",
+            "Your aura just leveled up.",
+            "Romanticize your life — even the boring parts.",
+            "The world’s not ready, but you are.",
+            "You’re the main quest and the side quest.",
+            "Good karma’s typing…",
+            "Energy check: unstoppable.",
+            "You didn’t lose — you redirected.",
+            "Eat, slay, nap, repeat.",
+            "The universe said ‘bet.’",
+            "You’re not lucky — you’re aligned.",
+            "Something delulu might just come trululu.",
+            "Your next chapter is giving ✨iconic✨."
+        ];
+
+        // DOM Elements
+        const fortuneCookie = document.getElementById('fortune-cookie');
+        const fortunePaper = document.getElementById('fortune-paper');
+        const fortuneText = document.getElementById('fortune-text');
+        const resetButton = document.getElementById('reset-button');
+        const promptText = document.getElementById('prompt');
+
+        let isCracked = false;
+
+        function crackCookie() {
+            if (isCracked) return;
+            isCracked = true;
+
+            // Hide the prompt
+            promptText.classList.add('hidden');
+            
+            // Start crack animation
+            fortuneCookie.classList.add('cracked');
+            
+            // Select and display a random fortune
+            const randomIndex = Math.floor(Math.random() * fortunes.length);
+            fortuneText.textContent = fortunes[randomIndex];
+            
+            // Show the paper and reset button with a delay for animations
+            fortunePaper.classList.add('visible');
+            resetButton.classList.add('visible');
+        }
+
+        function resetGame() {
+            isCracked = false;
+            
+            // Hide paper and button
+            fortunePaper.classList.remove('visible');
+            resetButton.classList.remove('visible');
+
+            // Using a timeout to let the paper disappear before the cookie resets
+            setTimeout(() => {
+                fortuneCookie.classList.remove('cracked');
+                promptText.classList.remove('hidden');
+            }, 500); // This delay should match the paper's exit transition
+        }
+
+        // Event Listeners
+        fortuneCookie.addEventListener('click', crackCookie);
+        resetButton.addEventListener('click', resetGame);
+    </script>
+
+</body>
+</html>
