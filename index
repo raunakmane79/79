@@ -1,514 +1,339 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Holo Pop — by Raunak</title>
-  <meta name="theme-color" content="#0b0c10" />
-  <style>
-    :root{
-      --bg:#0b0c10;           /* deep charcoal */
-      --fg:#e6e7eb;           /* soft white */
-      --glass:rgba(255,255,255,0.08);
-      --glass-2:rgba(255,255,255,0.12);
-      --ring:#9ae6b4;         /* mint */
-      --accent:#7dd3fc;       /* sky */
-      --accent-2:#c4b5fd;     /* violet */
-      --brand:#22c55e;        /* emerald */
-      --danger:#ef4444;       /* red */
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fortune Cookie Game</title>
+    <style>
+        /* --- Basic Setup & Theming --- */
+        :root {
+            --bg-color: #fdf2e9;
+            --cookie-color: #e4a74a;
+            --cookie-dark: #c98e36;
+            --paper-color: #fffbeb;
+            --text-color: #5c3a12;
+            --shadow-color: rgba(0, 0, 0, 0.15);
+        }
 
-      --safe-bottom: max(env(safe-area-inset-bottom), 12px);
-      --safe-top: max(env(safe-area-inset-top), 12px);
-    }
-    html,body{height:100%;}
-    body{
-      margin:0; background:radial-gradient(1200px 800px at 70% -10%, #11131a 0%, var(--bg) 40%, #0a0b0f 100%);
-      color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji;
-      touch-action:none; /* prevent browser gestures */
-      overscroll-behavior:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    canvas{display:block; width:100vw; height:100vh;}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    /* HUD */
-    .hud{ position:fixed; inset:0; pointer-events:none; }
-    .row{ position:fixed; left:0; right:0; display:flex; justify-content:space-between; gap:12px; padding:12px; pointer-events:none; }
-    .row.top{ top:var(--safe-top); }
-    .row.bottom{ bottom:var(--safe-bottom); }
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevents scrollbars on mobile */
+        }
 
-    .glass{
-      pointer-events:auto;
-      backdrop-filter: blur(12px) saturate(1.2);
-      -webkit-backdrop-filter: blur(12px) saturate(1.2);
-      background:linear-gradient( to bottom right, var(--glass), var(--glass-2) );
-      border:1px solid rgba(255,255,255,0.12);
-      border-radius:16px; box-shadow:0 8px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
-      color:var(--fg);
-    }
-    .chip{ display:flex; align-items:center; gap:10px; padding:10px 14px; font-weight:600; letter-spacing:.2px; }
-    .chip .dot{ width:8px; height:8px; border-radius:50%; background:var(--brand); box-shadow:0 0 18px 6px rgba(34,197,94,.35); }
-    .btn{ cursor:pointer; border-radius:14px; padding:10px 12px; border:1px solid rgba(255,255,255,0.14); font-weight:600; user-select:none; }
-    .btn:active{ transform:translateY(1px); }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Poppins', 'Helvetica Neue', sans-serif;
+            background: radial-gradient(circle, #fff7ed, var(--bg-color));
+            perspective: 1000px;
+            -webkit-tap-highlight-color: transparent; /* Disable tap highlight on mobile */
+        }
 
-    .toggle{ display:flex; align-items:center; gap:10px; padding:8px 10px; }
-    .toggle input{ appearance:none; width:46px; height:28px; border-radius:28px; background:#1b1d24; border:1px solid rgba(255,255,255,.12); position:relative; outline:none; cursor:pointer; transition:.25s; }
-    .toggle input::after{ content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:linear-gradient(180deg,#fff,#d9d9d9); box-shadow:0 2px 8px rgba(0,0,0,.35); transition:.25s; }
-    .toggle input:checked{ background:linear-gradient(90deg,#1f9d55,#2dd4bf); }
-    .toggle input:checked::after{ left:21px; }
+        /* --- Main Game Container --- */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        
+        /* --- Prompt Text --- */
+        #prompt {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-color);
+            opacity: 1;
+            transition: opacity 0.5s ease;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
 
-    .brand{ position:fixed; top:var(--safe-top); left:50%; transform:translateX(-50%); pointer-events:none; font-weight:800; letter-spacing:.4px; opacity:.95; text-shadow:0 1px 0 rgba(0,0,0,.35); font-size:14px; }
+        #prompt.hidden {
+            opacity: 0;
+        }
 
-    /* Fever bar */
-    .fever{ position:fixed; top:calc(var(--safe-top) + 42px); left:50%; transform:translateX(-50%); width:min(70vw, 520px); height:10px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); overflow:hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
-    .fever > span{ display:block; height:100%; width:0%; background:linear-gradient(90deg, #22c55e, #06b6d4, #8b5cf6); transition:width .15s; filter:saturate(1.3) drop-shadow(0 0 10px rgba(34,197,94,.35)); }
-    .fever-label{ position:fixed; top:calc(var(--safe-top) + 24px); left:50%; transform:translateX(-50%); font-size:11px; opacity:.75; pointer-events:none; font-weight:700; letter-spacing:.25px; }
+        /* --- Fortune Cookie Styling & Animation --- */
+        .fortune-cookie-wrapper {
+            position: relative;
+            width: 250px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            animation: float 4s ease-in-out infinite;
+            transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            /* Adding a more realistic drop shadow */
+            filter: drop-shadow(0 5px 8px rgba(0,0,0,0.2));
+        }
 
-    .title{ font-size:14px; opacity:.8; font-weight:600; }
+        .fortune-cookie-wrapper:hover {
+            transform: scale(1.05);
+        }
+        
+        .cookie-half {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            transition: transform 1s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.8s ease-out 0.2s;
+        }
 
-    /* Start overlay */
-    .overlay{ position:fixed; inset:0; display:grid; place-items:center; background:radial-gradient(600px 400px at 50% 0%, rgba(255,255,255,.04), transparent 60%), linear-gradient(180deg, rgba(0,0,0,.45), rgba(0,0,0,.55)); }
-    .panel{ width:min(92vw,600px); padding:18px; animation:float 3s ease-in-out infinite; }
-    @keyframes float { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
-    .cta{ display:flex; gap:12px; flex-wrap:wrap; }
-    h1{ margin:6px 0 2px; font-size:24px; letter-spacing:.3px; }
-    p{ margin:0; opacity:.85; }
-    .bigbtn{ flex:1; text-align:center; padding:14px 16px; border-radius:16px; background:linear-gradient(180deg,#2dd4bf,#22c55e); color:#04120d; font-weight:800; letter-spacing:.3px; border:none; box-shadow:0 12px 30px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.18) inset; cursor:pointer; }
-    .ghost{ background:transparent; color:var(--fg); border:1px solid rgba(255,255,255,.18); }
+        #cookie-left {
+            transform-origin: bottom right;
+        }
 
-    /* Minimal footer badge */
-    .badge{ position:fixed; bottom:var(--safe-bottom); left:50%; transform:translateX(-50%); font-size:12px; opacity:.6; pointer-events:none; text-align:center; padding:0 10px; }
+        #cookie-right {
+            transform-origin: bottom left;
+        }
+        
+        /* Cracked State Animation */
+        .fortune-cookie-wrapper.cracked #cookie-left {
+            transform: translate(-80px, 20px) rotate(-30deg) scale(0.9);
+            opacity: 0;
+        }
 
-    /* Toasts */
-    .toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--safe-bottom) + 56px); background:linear-gradient( to bottom right, var(--glass), var(--glass-2) ); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:10px 14px; font-weight:700; box-shadow:0 10px 30px rgba(0,0,0,.35); display:none; }
+        .fortune-cookie-wrapper.cracked #cookie-right {
+            transform: translate(80px, 20px) rotate(30deg) scale(0.9);
+            opacity: 0;
+        }
 
-    /* Mobile control cluster */
-    .cluster{ display:flex; gap:8px; padding:8px; align-items:center; flex-wrap:wrap; }
-    .cluster .btn{ font-size:13px; }
-  </style>
+        /* --- Fortune Paper Styling & Animation --- */
+        #fortune-paper {
+            position: absolute;
+            width: 280px;
+            background-color: var(--paper-color);
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 10px 25px var(--shadow-color);
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px) scale(0.5);
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        #fortune-paper.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1) rotate(-2deg);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        #fortune-text {
+            font-family: 'Caveat', cursive;
+            font-size: 1.8rem;
+            line-height: 1.4;
+            color: var(--text-color);
+        }
+
+        /* --- Reset Button --- */
+        #reset-button {
+            margin-top: 2rem;
+            padding: 12px 28px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--cookie-dark);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease 1s;
+            pointer-events: none;
+        }
+        
+        #reset-button.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        #reset-button:hover {
+            background-color: var(--cookie-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--shadow-color);
+        }
+
+        /* --- Keyframe Animations --- */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* --- Footer --- */
+        footer {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #bda17e;
+        }
+
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Caveat:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <canvas id="game"></canvas>
 
-  <div class="hud">
-    <div class="brand">Holo Pop — Raunak</div>
-    <div class="fever-label">Combo Meter</div>
-    <div class="fever"><span id="feverFill"></span></div>
+    <div class="game-container">
+        
+        <p id="prompt">Tap the cookie to reveal your fortune!</p>
 
-    <div class="row top">
-      <div class="glass chip" id="scoreBox">
-        <div class="dot"></div>
-        <div>
-          <div style="font-size:12px; opacity:.7">SCORE</div>
-          <div id="score" style="font-size:22px; font-weight:900;">0</div>
+        <div class="fortune-cookie-wrapper" id="fortune-cookie">
+            <div id="fortune-paper">
+                <p id="fortune-text"></p>
+            </div>
+            
+            <svg id="cookie-left" class="cookie-half" viewBox="0 0 100 100">
+                <defs>
+                    <linearGradient id="grad-light" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#f3c27a;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#e4a74a;stop-opacity:1" />
+                    </linearGradient>
+                    <linearGradient id="grad-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#d89b3f;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#c98e36;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path d="M 50,95 A 45,45 0 0,1 5,50 L 50,50 Z" fill="url(#grad-light)"/>
+                <path d="M 50,95 A 45,45 0 0,0 95,50 L 50,50 Z" fill="url(#grad-dark)"/>
+            </svg>
+            <svg id="cookie-right" class="cookie-half" viewBox="0 0 100 100">
+                <defs>
+                    <linearGradient id="grad-light-right" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#f3c27a;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#e4a74a;stop-opacity:1" />
+                    </linearGradient>
+                    <linearGradient id="grad-dark-right" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#d89b3f;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#c98e36;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path d="M 50,95 A 45,45 0 0,1 5,50 L 50,50 Z" fill="url(#grad-light-right)" transform="rotate(90 50 50)"/>
+                <path d="M 50,95 A 45,45 0 0,0 95,50 L 50,50 Z" fill="url(#grad-dark-right)" transform="rotate(90 50 50)"/>
+            </svg>
         </div>
-      </div>
-      <div class="glass chip" id="timerBox">
-        <div style="width:8px;height:8px;border-radius:50%;background:var(--accent); box-shadow:0 0 18px 6px rgba(125,211,252,.35)"></div>
-        <div>
-          <div style="font-size:12px; opacity:.7">TIME</div>
-          <div id="time" style="font-size:22px; font-weight:900;">60</div>
-        </div>
-      </div>
-      <div class="glass chip" id="bestBox">
-        <div style="width:8px;height:8px;border-radius:50%;background:var(--accent-2); box-shadow:0 0 18px 6px rgba(196,181,253,.35)"></div>
-        <div>
-          <div style="font-size:12px; opacity:.7">BEST</div>
-          <div id="best" style="font-size:22px; font-weight:900;">0</div>
-        </div>
-      </div>
+        
+        <button id="reset-button">New Fortune</button>
     </div>
 
-    <div class="row bottom">
-      <div class="glass cluster">
-        <div class="toggle"><label class="title">Sound</label><input id="soundToggle" type="checkbox" checked></div>
-        <div class="toggle"><label class="title">Haptics</label><input id="hapticsToggle" type="checkbox" checked></div>
-        <button id="restartBtn" class="btn">Restart</button>
-        <button id="modeBtn" class="btn" title="Switch mode">60s</button>
-        <button id="shareBtn" class="btn">Share</button>
-        <button id="themeBtn" class="btn" title="Switch theme">Theme</button>
-      </div>
-    </div>
+    <footer>
+        &copy; 2025 raunak mane
+    </footer>
 
-    <div class="badge">Tap to spawn waves • Drag for sparkle trails • Chain pops to fill Combo Meter • Power‑ups: ⏱️ +5s & ⭐ x2 score</div>
-  </div>
+    <script>
+        const fortunes = [
+            "Your creativity will lead to great success.",
+            "An exciting opportunity lies ahead of you.",
+            "You will soon be surrounded by good friends and laughter.",
+            "The journey of a thousand miles begins with a single step.",
+            "Patience is your key to unlocking a new door.",
+            "A surprise gift will arrive when you least expect it.",
+            "Your ability to find joy in small things will brighten your week.",
+            "Listen to your heart; it knows the way.",
+            "Hard work will pay off in the most unexpected way.",
+            "You are stronger than you think.",
+            "Adventure awaits. Say 'yes' to new experiences.",
+            "A kind gesture will be returned to you tenfold.",
+            "Good news is on its way to you.",
+            "Now is the time to try something new.",
+            "You will find happiness where you least expect it.",
+            "Your intuition is telling you something important. Listen.",
+            "Don't be afraid to take the road less traveled.",
+            "A dream you have will come true.",
+            "Manifest it, then act like it’s already yours.",
+            "Main character energy, always.",
+            "You’re literally the plot twist.",
+            "Lowkey, the universe is obsessed with you.",
+            "You didn’t come this far just to be mid.",
+            "Vibes attract tribes — keep yours high.",
+            "The glow-up is internal first.",
+            "Tomorrow’s drama doesn’t deserve today’s peace.",
+            "You’re the algorithm’s favorite.",
+            "If it’s meant for you, it won’t ghost you.",
+            "Your soft era still counts as growth.",
+            "Chill. You’re built for this.",
+            "Even Wi-Fi reconnects — so can you.",
+            "You’re not behind, you’re in your own timeline.",
+            "Dream audaciously. Fail aesthetically.",
+            "The assignment? You understood it.",
+            "You’re one lucky break away from your next flex.",
+            "Protect your peace like it’s a limited edition drop.",
+            "Your aura just leveled up.",
+            "Romanticize your life — even the boring parts.",
+            "The world’s not ready, but you are.",
+            "You’re the main quest and the side quest.",
+            "Good karma’s typing…",
+            "Energy check: unstoppable.",
+            "You didn’t lose — you redirected.",
+            "Eat, slay, nap, repeat.",
+            "The universe said ‘bet.’",
+            "You’re not lucky — you’re aligned.",
+            "Something delulu might just come trululu.",
+            "Your next chapter is giving ✨iconic✨."
+        ];
 
-  <div class="overlay" id="start">
-    <div class="glass panel">
-      <h1>Holo Pop</h1>
-      <p>Create expanding holo‑rings with taps. Pop drifting orbs. Make fast chains to trigger <b>Fever</b> mode for massive points.</p>
-      <div style="height:10px"></div>
-      <div class="cta">
-        <button class="bigbtn" id="playBtn">Play</button>
-        <button class="bigbtn ghost" id="zenBtn">Zen Mode</button>
-      </div>
-      <div style="height:6px"></div>
-      <p style="font-size:12px; opacity:.75;">Best on mobile • Headphones recommended • Add this link to your Instagram bio</p>
-    </div>
-  </div>
+        // DOM Elements
+        const fortuneCookie = document.getElementById('fortune-cookie');
+        const fortunePaper = document.getElementById('fortune-paper');
+        const fortuneText = document.getElementById('fortune-text');
+        const resetButton = document.getElementById('reset-button');
+        const promptText = document.getElementById('prompt');
 
-  <div class="toast" id="toast"></div>
+        let isCracked = false;
 
-  <script>
-  (()=>{
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
+        function crackCookie() {
+            if (isCracked) return;
+            isCracked = true;
 
-    // DPR‑aware sizing
-    let W=0,H=0,DPR=1;
-    function resize(){
-      DPR = Math.min(2, window.devicePixelRatio || 1);
-      W = Math.floor(window.innerWidth);
-      H = Math.floor(window.innerHeight);
-      canvas.width = Math.floor(W * DPR);
-      canvas.height = Math.floor(H * DPR);
-      canvas.style.width = W + 'px';
-      canvas.style.height = H + 'px';
-      ctx.setTransform(DPR,0,0,DPR,0,0);
-    }
-    window.addEventListener('resize', resize, {passive:true});
-    resize();
-
-    // Game state
-    let running=false, zen=false;
-    let score=0, best=Number(localStorage.getItem('holo_best')||0);
-    let timeLeft = 60.0; // seconds (timer mode)
-    let scoreMult = 1;   // temporary multiplier
-    let multTimer = 0;   // seconds left on multiplier
-    let fever = 0;       // 0..100 combo meter
-
-    const scoreEl = document.getElementById('score');
-    const timeEl  = document.getElementById('time');
-    const bestEl  = document.getElementById('best'); bestEl.textContent = best;
-    const feverFill = document.getElementById('feverFill');
-
-    // Audio (unlocked on first interaction)
-    let AC=null; let masterGain=null; let soundOn=true; let hapticsOn=true;
-    function initAudio(){
-      if(AC) return;
-      AC = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = AC.createGain();
-      masterGain.gain.value = 0.6;
-      masterGain.connect(AC.destination);
-    }
-
-    function blip(freq=440, dur=0.12){
-      if(!soundOn || !AC) return;
-      const t0 = AC.currentTime + 0.001;
-      const o = AC.createOscillator();
-      const g = AC.createGain();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(freq, t0);
-      o.frequency.exponentialRampToValueAtTime(freq*0.5, t0+dur);
-      g.gain.setValueAtTime(0.001, t0);
-      g.gain.exponentialRampToValueAtTime(0.9, t0+0.03);
-      g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
-      o.connect(g).connect(masterGain);
-      o.start(t0);
-      o.stop(t0+dur+0.02);
-    }
-
-    function popSound(pitchIndex=0){
-      const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
-      const f = scale[pitchIndex % scale.length] * (1 + (Math.random()*0.04-0.02));
-      blip(f, 0.14);
-    }
-
-    function haptic(ms=10){ if(hapticsOn && navigator.vibrate) navigator.vibrate(ms); }
-
-    // Themes
-    const THEMES = [
-      {ring:'#adffdc', spark:'#7dd3fc', bg:'#0b0c10'},
-      {ring:'#ffd7ad', spark:'#fca5a5', bg:'#0c0a09'},
-      {ring:'#c7d2fe', spark:'#a5b4fc', bg:'#0a0b1a'},
-      {ring:'#bef264', spark:'#86efac', bg:'#07120a'},
-    ];
-    let themeIndex = 0;
-    function applyTheme(){
-      document.documentElement.style.setProperty('--ring', THEMES[themeIndex].ring);
-      document.body.style.background = `radial-gradient(1200px 800px at 70% -10%, #11131a 0%, ${THEMES[themeIndex].bg} 40%, #0a0b0f 100%)`;
-    }
-    applyTheme();
-
-    // Entities
-    const orbs=[]; // {x,y,r,vx,vy,hue,life,type}
-    const waves=[]; // {x,y,r,max,alpha,age}
-    const particles=[]; // touch sparkle trails
-    const confetti=[]; // end game celebration
-    const stars=[];    // parallax background
-
-    // Starfield
-    for(let i=0;i<90;i++){
-      stars.push({x:Math.random()*W, y:Math.random()*H, z:0.3+Math.random()*0.7, a:0.3+Math.random()*0.7});
-    }
-
-    function spawnOrb(){
-      const edge = Math.floor(Math.random()*4);
-      const margin = 20;
-      let x,y;
-      if(edge===0){ x = margin; y = Math.random()*H; }
-      else if(edge===1){ x = W-margin; y = Math.random()*H; }
-      else if(edge===2){ x = Math.random()*W; y = margin; }
-      else { x = Math.random()*W; y = H-margin; }
-      const r = 10 + Math.random()*16;
-      const speed = 0.4 + Math.random()*1.4;
-      const ang = Math.atan2(H/2 - y, W/2 - x) + (Math.random()*0.8-0.4);
-      const vx = Math.cos(ang)*speed;
-      const vy = Math.sin(ang)*speed;
-      const hue = 160 + Math.random()*120; // teal to violet
-      // 8% chance for a power‑up
-      const type = Math.random()<0.04 ? 'time' : (Math.random()<0.08 ? 'mult' : 'normal');
-      orbs.push({x,y,r,vx,vy,hue,life:1,type});
-    }
-
-    let spawnTimer = 0;
-
-    function addWave(x,y){
-      waves.push({x,y,r:2,max:Math.max(60,Math.min(220, 120 + Math.random()*100)), alpha:1, age:0});
-      // audiovisual
-      initAudio(); blip(220+Math.random()*220,0.08); haptic(8);
-    }
-
-    // Input
-    const touches = new Map();
-    function handleDown(x,y){ if(!running) return; addWave(x,y); }
-    function handleMove(x,y){
-      // sparkle trail
-      particles.push({x,y,vx:(Math.random()*1-0.5),vy:(Math.random()*1-0.5),life:1,size:2+Math.random()*2});
-    }
-
-    canvas.addEventListener('touchstart', (e)=>{
-      for(const t of e.changedTouches){ touches.set(t.identifier, {x:t.clientX, y:t.clientY}); handleDown(t.clientX, t.clientY); }
-      e.preventDefault();
-    }, {passive:false});
-    canvas.addEventListener('touchmove', (e)=>{
-      for(const t of e.changedTouches){ touches.set(t.identifier, {x:t.clientX, y:t.clientY}); handleMove(t.clientX, t.clientY); }
-      e.preventDefault();
-    }, {passive:false});
-    canvas.addEventListener('touchend', (e)=>{ for(const t of e.changedTouches){ touches.delete(t.identifier); } e.preventDefault(); }, {passive:false});
-
-    canvas.addEventListener('pointerdown', (e)=>{ if(e.pointerType==='mouse') handleDown(e.clientX, e.clientY); }, {passive:true});
-
-    // Collisions and scoring
-    let chain=0; let lastPopTime=0; const CHAIN_WINDOW=450; // ms
-
-    function award(toastText){
-      const t = document.getElementById('toast');
-      t.textContent = toastText; t.style.display='block';
-      setTimeout(()=>{ t.style.display='none'; }, 900);
-    }
-
-    function tryPop(orb, wave){
-      const dx = orb.x - wave.x, dy = orb.y - wave.y;
-      const d = Math.hypot(dx, dy);
-      const thickness = 8 + Math.min(16, wave.r*0.06);
-      if(d > wave.r - thickness && d < wave.r + thickness){
-        orb.life = 0; // mark dead
-        // combo logic by timing
-        const now = performance.now();
-        if(now - lastPopTime < CHAIN_WINDOW) chain++; else chain=1;
-        lastPopTime = now;
-
-        // fever meter
-        fever = Math.min(100, fever + 8 + Math.min(10, chain));
-        feverFill.style.width = fever + '%';
-
-        // trigger Fever
-        if(fever === 100){ scoreMult = 2; multTimer = 4.0; award('FEVER! x2 score'); haptic(60); }
-
-        // base points
-        const base = 10 + Math.floor(chain*2);
-        let gain = Math.round(base * scoreMult);
-
-        if(orb.type==='time'){
-          if(!zen){ timeLeft = Math.min(120, timeLeft + 5); award('+5s'); }
-          gain += 5;
-        } else if(orb.type==='mult'){
-          scoreMult = 2; multTimer = 6.0; award('⭐ x2 for 6s');
+            // Hide the prompt
+            promptText.classList.add('hidden');
+            
+            // Start crack animation
+            fortuneCookie.classList.add('cracked');
+            
+            // Select and display a random fortune
+            const randomIndex = Math.floor(Math.random() * fortunes.length);
+            fortuneText.textContent = fortunes[randomIndex];
+            
+            // Show the paper and reset button with a delay for animations
+            fortunePaper.classList.add('visible');
+            resetButton.classList.add('visible');
         }
 
-        score += gain;
-        scoreEl.textContent = score;
-        // audiovisual
-        const pitch = Math.min(5, chain);
-        popSound(pitch);
-        haptic(14 + Math.min(40, chain*4));
-        // mini burst waves
-        for(let i=0;i<2;i++) waves.push({x:orb.x+(Math.random()*6-3), y:orb.y+(Math.random()*6-3), r:1, max:40+Math.random()*20, alpha:.7, age:0});
-        // confetti sprinkle on big chains
-        if(chain%8===0){ for(let i=0;i<18;i++){ confetti.push({x:orb.x,y:orb.y,vx:(Math.random()*4-2),vy:(-2-Math.random()*2),life:1}); } }
-        return true;
-      }
-      return false;
-    }
+        function resetGame() {
+            isCracked = false;
+            
+            // Hide paper and button
+            fortunePaper.classList.remove('visible');
+            resetButton.classList.remove('visible');
 
-    // Render helpers
-    function drawStar(s){ ctx.globalAlpha = s.a; ctx.fillStyle = '#fff'; ctx.fillRect(s.x, s.y, 1.2, 1.2); ctx.globalAlpha=1; }
-
-    function drawOrb(o){
-      // power‑up ring hint
-      if(o.type!=='normal'){
-        ctx.save();
-        ctx.strokeStyle = o.type==='time'? 'rgba(125,211,252,.65)':'rgba(250,204,21,.7)';
-        ctx.lineWidth = 2; ctx.setLineDash([4,4]);
-        ctx.beginPath(); ctx.arc(o.x,o.y,o.r+6,0,Math.PI*2); ctx.stroke();
-        ctx.setLineDash([]); ctx.restore();
-      }
-      const grd = ctx.createRadialGradient(o.x,o.y,1,o.x,o.y,o.r*1.4);
-      grd.addColorStop(0, `hsla(${o.hue}, 85%, 70%, .95)`);
-      grd.addColorStop(1, `hsla(${o.hue+20}, 85%, 50%, 0)`);
-      ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle = `hsla(${o.hue+40}, 85%, 75%, .35)`;
-      ctx.lineWidth = 1.5; ctx.stroke();
-    }
-
-    function drawWave(w){
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = `rgba(173, 255, 220, ${0.6*w.alpha})`;
-      ctx.lineWidth = 3 + Math.max(1, w.r*0.03);
-      ctx.beginPath(); ctx.arc(w.x,w.y,w.r,0,Math.PI*2); ctx.stroke();
-      ctx.restore();
-    }
-
-    function drawParticles(){
-      for(let i=particles.length-1;i>=0;i--){
-        const p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.life -= 0.02; p.vy += 0.02;
-        if(p.life<=0){ particles.splice(i,1); continue; }
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = 'rgba(255,255,255,1)';
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    function drawConfetti(){
-      for(let i=confetti.length-1;i>=0;i--){
-        const c = confetti[i];
-        c.x += c.vx; c.y += c.vy; c.vy += 0.08; c.life -= 0.01;
-        if(c.life<=0 || c.y>H+20){ confetti.splice(i,1); continue; }
-        ctx.fillStyle = `hsl(${(i*23)%360} 90% 65%)`;
-        ctx.fillRect(c.x, c.y, 3, 5);
-      }
-    }
-
-    // Loop
-    let lastT=0; let bgT=0; let spawnBase=1100;
-    function step(ts){
-      if(!lastT) lastT=ts; const dt = Math.min(32, ts-lastT); lastT=ts; // ms
-      const dts = dt/1000;
-      ctx.clearRect(0,0,W,H);
-
-      // subtle starfield parallax
-      bgT += dts;
-      for(const s of stars){ s.x += s.z*0.2; if(s.x>W) s.x=0; drawStar(s); }
-
-      // update fever/mult timers
-      if(multTimer>0){ multTimer -= dts; if(multTimer<=0){ scoreMult=1; award('Multiplier ended'); } }
-      else if(fever>0 && scoreMult===2){ /* keep */ } else { fever = Math.max(0, fever - 12*dts); }
-      feverFill.style.width = Math.max(0, Math.min(100, fever)) + '%';
-
-      // update timer
-      if(running && !zen){ timeLeft -= dts; if(timeLeft < 0){ timeLeft = 0; endGame(); } timeEl.textContent = Math.ceil(timeLeft).toString(); }
-
-      // dynamic difficulty (spawns faster with score)
-      if(running){
-        spawnTimer -= dt;
-        const interval = Math.max(260, spawnBase - score*1.6); // scales with score
-        if(spawnTimer <= 0){ spawnOrb(); spawnTimer = interval*(0.7+Math.random()*0.6); }
-      }
-
-      // update orbs
-      for(let i=orbs.length-1; i>=0; i--){
-        const o = orbs[i];
-        o.x += o.vx * (dt/16);
-        o.y += o.vy * (dt/16);
-        // bounce
-        if(o.x < o.r){ o.x=o.r; o.vx*=-1; }
-        if(o.x > W-o.r){ o.x=W-o.r; o.vx*=-1; }
-        if(o.y < o.r){ o.y=o.r; o.vy*=-1; }
-        if(o.y > H-o.r){ o.y=H-o.r; o.vy*=-1; }
-        // draw
-        drawOrb(o);
-        if(o.life<=0){ orbs.splice(i,1); }
-      }
-
-      // waves
-      for(let i=waves.length-1; i>=0; i--){
-        const w = waves[i];
-        w.age += dts; w.r += (90 + w.r*0.9) * dts; // accelerating growth
-        w.alpha = Math.max(0, 1 - (w.r / w.max));
-        drawWave(w);
-        // collisions
-        for(const o of orbs){ tryPop(o, w); }
-        if(w.r >= w.max){ waves.splice(i,1); }
-      }
-
-      drawParticles();
-      drawConfetti();
-
-      requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-
-    // Controls
-    const startOverlay = document.getElementById('start');
-    const playBtn = document.getElementById('playBtn');
-    const zenBtn  = document.getElementById('zenBtn');
-    const restartBtn = document.getElementById('restartBtn');
-    const modeBtn = document.getElementById('modeBtn');
-    const shareBtn = document.getElementById('shareBtn');
-    const themeBtn = document.getElementById('themeBtn');
-
-    function startGame(timerMode=true){
-      zen = !timerMode;
-      running = true; score = 0; timeLeft = 60; chain=0; lastPopTime=0; spawnTimer=0; orbs.length=0; waves.length=0; particles.length=0; confetti.length=0; fever=0; scoreMult=1; multTimer=0;
-      scoreEl.textContent = '0'; timeEl.textContent = timerMode? '60' : '∞'; modeBtn.textContent = timerMode ? '60s' : 'Zen';
-      startOverlay.style.display='none';
-    }
-    function endGame(){
-      running=false;
-      best = Math.max(best, score); localStorage.setItem('holo_best', String(best)); bestEl.textContent = best;
-      // celebratory confetti
-      for(let i=0;i<120;i++) confetti.push({x:Math.random()*W, y:-10, vx:(Math.random()*2-1), vy:(Math.random()*3+1), life:1});
-      startOverlay.style.display='grid';
-      document.querySelector('#start h1').textContent = 'Nice run! Score: '+score;
-      document.querySelector('#start p').textContent = 'Tap Play to go again, or relax in Zen mode.';
-    }
-
-    playBtn.addEventListener('click', ()=>{ initAudio(); startGame(true); });
-    zenBtn.addEventListener('click', ()=>{ initAudio(); startGame(false); });
-    restartBtn.addEventListener('click', ()=>{ startGame(modeBtn.textContent==='60s'); });
-    modeBtn.addEventListener('click', ()=>{ const timerMode = modeBtn.textContent!=='Zen'; modeBtn.textContent = timerMode?'Zen':'60s'; });
-
-    // Toggles
-    const soundToggle = document.getElementById('soundToggle');
-    const hapticsToggle = document.getElementById('hapticsToggle');
-    soundToggle.addEventListener('change', ()=>{ soundOn = soundToggle.checked; if(soundOn) initAudio(); });
-    hapticsToggle.addEventListener('change', ()=>{ hapticsOn = hapticsToggle.checked; });
-
-    // Theme switch
-    themeBtn.addEventListener('click', ()=>{ themeIndex=(themeIndex+1)%THEMES.length; applyTheme(); });
-
-    // Share
-    shareBtn.addEventListener('click', async ()=>{
-      const text = `I scored ${score} on Holo Pop by Raunak!`;
-      if(navigator.share){
-        try{ await navigator.share({ title:'Holo Pop — Raunak', text, url: location.href }); }catch{ /* user canceled */ }
-      }else{
-        try{
-          await navigator.clipboard.writeText(`${text} ${location.href}`);
-          award('Link copied!');
-        }catch{
-          award('Copy failed');
+            // Using a timeout to let the paper disappear before the cookie resets
+            setTimeout(() => {
+                fortuneCookie.classList.remove('cracked');
+                promptText.classList.remove('hidden');
+            }, 500); // This delay should match the paper's exit transition
         }
-      }
-    });
 
-    // Wake AudioContext on first touch (iOS)
-    window.addEventListener('touchstart', ()=>{ initAudio(); }, {once:true, passive:true});
+        // Event Listeners
+        fortuneCookie.addEventListener('click', crackCookie);
+        resetButton.addEventListener('click', resetGame);
+    </script>
 
-  })();
-  </script>
 </body>
 </html>
